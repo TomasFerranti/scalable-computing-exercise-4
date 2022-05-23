@@ -3,6 +3,7 @@
 #include <fstream>
 #include <sstream>
 #include <sys/wait.h>
+#include <unistd.h>
 #include <thread>
 #include <vector>
 #include <mpi.h>
@@ -33,13 +34,12 @@ void manager(int my_rank, int world_size)
   printf("Data loaded into buffer\n");
 
   // Manager sends the necessary size of text to each worker
-  std::vector<int> nBytesData;
   std::vector<std::string> dataBlocks;
   
   // * Size the input
   int nWorkers = world_size-1;
   dataBlocks.resize(nWorkers);
-  nBytesData.resize(nWorkers);
+  int nBytesData[nWorkers];
 
   // * Break data into blocks
   int blockSize = int(fileSize) / nWorkers;
@@ -56,7 +56,7 @@ void manager(int my_rank, int world_size)
       dataBlocks[blockInx] = std::string(&buffer[blockStart], blockEnd - blockStart);
       nBytesData[blockInx] = blockEnd-blockStart;
       printf("Created block #%d from %d to %d with %d bytes\n", blockInx, blockStart, blockEnd, nBytesData[blockInx]);
-      MPI_Send( &nBytesData[blockInx], 1, MPI_INT, blockInx + 1, 69, MPI_COMM_WORLD );
+      MPI_Send( &(nBytesData[blockInx]), 1, MPI_INT, blockInx + 1, 69, MPI_COMM_WORLD );
 
       // ** Update indexes
       blockStart = blockEnd + 1;
@@ -76,7 +76,6 @@ void manager(int my_rank, int world_size)
   
 
   // Manager sums and prints total number of ocurrences 
-  
   std::cout << "Manager: " << my_rank << ". Message: DONE" << std::endl;
 }
 
@@ -91,7 +90,7 @@ void worker(int my_rank, int world_size)
   std::cout << "Worker: " << my_rank << ". Message: allocated " << nBytes << " bytes" << std::endl;
 
   // Workers allocate memory to receive their part of text to process
-  std::vector<char> my_text[nBytes];
+  std::vector<char> my_text(nBytes);
 
   // Workers process and send final number of ocurrences to manager
   int my_ocurrences;
@@ -137,6 +136,7 @@ int main(int argc, char **argv) {
   // Finalize MPI
   // This must always be called after all other MPI functions
   std::cout << "Process: " << my_rank << ". Message: DONE" << std::endl;
+  MPI_Barrier(MPI_COMM_WORLD);
   MPI_Finalize();
 
   return 0;
