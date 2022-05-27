@@ -7,7 +7,7 @@
 #include <thread>
 #include <vector>
 #include <cstring>
-#include <mpi.h>
+#include <mpich/mpi.h>
 
 void manager(int my_rank, int world_size, std::string FILENAME, std::string SEARCH_WORD)
 {
@@ -195,6 +195,7 @@ int main(int argc, char **argv) {
   // Abort if any problems arise from init
   if (MPI_Init(&argc,&argv) != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, 1);
 
+  
   // Some constants
   std::string FILENAME = "shakespeare.txt";
   std::string SEARCH_WORD = "love";
@@ -206,6 +207,9 @@ int main(int argc, char **argv) {
   // Get the rank of this process in MPI_COMM_WORLD
   int my_rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
+
+  MPI_Barrier(MPI_COMM_WORLD);
+  double start_time = MPI_Wtime();
 
   // Each rank has its task
   
@@ -228,9 +232,15 @@ int main(int argc, char **argv) {
 
   // Finalize MPI
   // This must always be called after all other MPI functions
-  std::cout << "Process: " << my_rank << ". Message: DONE" << std::endl;
   MPI_Barrier(MPI_COMM_WORLD);
+  double total_time = MPI_Wtime() - start_time;
+
+  std::cout << "Process: " << my_rank << ". Message: DONE" << std::endl;
   MPI_Finalize();
 
+  if (my_rank == 0) 
+  {
+    std::cout << "Total time: " << total_time << " seconds\n";
+  }
   return 0;
 }
